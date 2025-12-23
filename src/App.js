@@ -4,6 +4,8 @@ import LandingPage from "./pages/Landing";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import HomePage from "./pages/Home";
+import BrowseEventsPage from "./pages/BrowseEvents";
+import EventGalleryPage from "./pages/EventGallery";
 
 const App = () => {
   const [currentPage, setCurrentPage] = useState("landing");
@@ -44,8 +46,23 @@ const App = () => {
     setCurrentPage("landing");
   };
 
-  // Handle page navigation
+  // Handle page navigation with validation
   const handleNavigate = (page) => {
+    // Valid pages
+    const validPages = ["landing", "login", "register", "home", "browse", "gallery"];
+    
+    // If page is invalid, redirect to home or landing
+    if (!validPages.includes(page)) {
+      setCurrentPage(user ? "home" : "landing");
+      return;
+    }
+    
+    // If trying to access protected pages without login
+    if (["home", "browse", "gallery"].includes(page) && !user) {
+      setCurrentPage("login");
+      return;
+    }
+    
     setCurrentPage(page);
   };
 
@@ -77,6 +94,22 @@ const App = () => {
 
       {currentPage === "home" && user && (
         <HomePage
+          user={user}
+          onLogout={handleLogout}
+          onNavigate={handleNavigate}
+        />
+      )}
+
+      {currentPage === "browse" && user && (
+        <BrowseEventsPage
+          user={user}
+          onLogout={handleLogout}
+          onNavigate={handleNavigate}
+        />
+      )}
+
+      {currentPage === "gallery" && user && (
+        <EventGalleryPage
           user={user}
           onLogout={handleLogout}
           onNavigate={handleNavigate}

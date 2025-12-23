@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Sparkles,
   Bell,
@@ -16,72 +16,146 @@ import {
   Flame
 } from "lucide-react";
 
-const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogout = () => {} }) => {
+const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogout = () => {}, onNavigate = () => {} }) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredEvents, setFilteredEvents] = useState({ featured: [], upcoming: [] });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
-  const featuredEvents = [
-    {
-      id: 1,
-      title: "Campus Music Festival",
-      date: "Oct 20, 2025",
-      time: "6:00 PM",
-      tag: "HOT",
-      location: "Main Auditorium",
-      image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1200&q=80",
-    },
-    {
-      id: 2,
-      title: "Student Art Exhibition",
-      date: "Oct 25, 2025",
-      time: "2:00 PM",
-      tag: "NEW",
-      location: "Art Gallery",
-      image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&q=80",
-    },
-    {
-      id: 3,
-      title: "Inter-College Sports Meet",
-      date: "Nov 1, 2025",
-      time: "8:00 AM",
-      tag: "TRENDING",
-      location: "Sports Complex",
-      image: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1200&q=80",
-    },
-  ];
+  const allEvents = {
+    featured: [
+      {
+        id: 1,
+        title: "Campus Music Festival",
+        date: "Oct 20, 2025",
+        time: "6:00 PM",
+        tag: "HOT",
+        location: "Main Auditorium",
+        image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1200&q=80",
+      },
+      {
+        id: 2,
+        title: "Student Art Exhibition",
+        date: "Oct 25, 2025",
+        time: "2:00 PM",
+        tag: "NEW",
+        location: "Art Gallery",
+        image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&q=80",
+      },
+      {
+        id: 3,
+        title: "Inter-College Sports Meet",
+        date: "Nov 1, 2025",
+        time: "8:00 AM",
+        tag: "TRENDING",
+        location: "Sports Complex",
+        image: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1200&q=80",
+      },
+    ],
+    upcoming: [
+      {
+        id: 4,
+        title: "Tech Symposium 2025",
+        date: "Nov 5, 2025",
+        attendees: 250,
+        image: "https://images.unsplash.com/photo-1543258103-a62bdc0697bf?w=1200&q=80",
+      },
+      {
+        id: 5,
+        title: "Cultural Night",
+        date: "Nov 8, 2025",
+        attendees: 180,
+        image: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1200&q=80",
+      },
+      {
+        id: 6,
+        title: "24hr Hackathon",
+        date: "Nov 12, 2025",
+        attendees: 320,
+        image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&q=80",
+      },
+    ]
+  };
 
-  const upcomingEvents = [
-    {
-      id: 4,
-      title: "Tech Symposium 2025",
-      date: "Nov 5, 2025",
-      attendees: 250,
-      image: "https://images.unsplash.com/photo-1543258103-a62bdc0697bf?w=1200&q=80",
-    },
-    {
-      id: 5,
-      title: "Cultural Night",
-      date: "Nov 8, 2025",
-      attendees: 180,
-      image: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1200&q=80",
-    },
-    {
-      id: 6,
-      title: "24hr Hackathon",
-      date: "Nov 12, 2025",
-      attendees: 320,
-      image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&q=80",
-    },
-  ];
+  // Initialize with all events
+  useEffect(() => {
+    setFilteredEvents(allEvents);
+  }, []);
+
+  // Get all event titles for suggestions
+  const getAllEventTitles = () => {
+    const allTitles = [
+      ...allEvents.featured.map(e => e.title),
+      ...allEvents.upcoming.map(e => e.title)
+    ];
+    return allTitles;
+  };
+
+  // Filter suggestions based on search query
+  const getSuggestions = () => {
+    if (!searchQuery.trim()) return [];
+    
+    const query = searchQuery.toLowerCase();
+    const titles = getAllEventTitles();
+    
+    return titles.filter(title => 
+      title.toLowerCase().includes(query)
+    ).slice(0, 5);
+  };
+
+  // Handle search
+  const handleSearch = (query) => {
+    if (!query.trim()) {
+      setFilteredEvents(allEvents);
+      return;
+    }
+
+    const searchTerm = query.toLowerCase();
+    
+    const filteredFeatured = allEvents.featured.filter(event =>
+      event.title.toLowerCase().includes(searchTerm) ||
+      event.location.toLowerCase().includes(searchTerm)
+    );
+
+    const filteredUpcoming = allEvents.upcoming.filter(event =>
+      event.title.toLowerCase().includes(searchTerm)
+    );
+
+    setFilteredEvents({
+      featured: filteredFeatured,
+      upcoming: filteredUpcoming
+    });
+  };
+
+  // Handle search input change
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setShowSuggestions(true);
+  };
+
+  // Handle suggestion click
+  const handleSuggestionClick = (suggestion) => {
+    setSearchQuery(suggestion);
+    setShowSuggestions(false);
+    handleSearch(suggestion);
+  };
+
+  // Handle search button click
+  const handleSearchSubmit = () => {
+    setShowSuggestions(false);
+    handleSearch(searchQuery);
+  };
+
+  const suggestions = getSuggestions();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-      {/* NAVBAR - Fixed with no white borders */}
+      {/* NAVBAR */}
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            {/* Logo */}
             <div className="flex items-center space-x-2">
               <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-2 rounded-xl">
                 <Sparkles className="w-5 h-5 text-white" />
@@ -91,13 +165,21 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
               </span>
             </div>
 
-            {/* Desktop Menu */}
             <div className="hidden md:flex items-center space-x-1">
-              <button className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">
+              <button 
+                onClick={() => onNavigate("home")}
+                className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">
                 Home
               </button>
-              <button className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors">
+              <button 
+                onClick={() => onNavigate("browse")}
+                className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors">
                 Browse Events
+              </button>
+              <button 
+                onClick={() => onNavigate("gallery")}
+                className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors">
+                Event Gallery
               </button>
               <button className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors">
                 My Registrations
@@ -108,7 +190,6 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
 
-              {/* Profile Dropdown */}
               <div className="relative ml-4">
                 <button
                   onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
@@ -153,7 +234,6 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
               </div>
             </div>
 
-            {/* Mobile Menu Button */}
             <button
               className="md:hidden p-2 text-slate-700 hover:bg-slate-100 rounded-lg"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -163,15 +243,17 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
           </div>
         </div>
 
-        {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden border-t border-slate-200 bg-white">
             <div className="px-4 py-3 space-y-1">
-              <button className="block w-full text-left px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg">
+              <button onClick={() => onNavigate("home")} className="block w-full text-left px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg">
                 Home
               </button>
-              <button className="block w-full text-left px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
+              <button onClick={() => onNavigate("browse")} className="block w-full text-left px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
                 Browse Events
+              </button>
+              <button onClick={() => onNavigate("gallery")} className="block w-full text-left px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
+                Event Gallery
               </button>
               <button className="block w-full text-left px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
                 My Registrations
@@ -204,7 +286,7 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* Search Bar with Suggestions */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 mb-12">
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <div className="relative">
@@ -214,11 +296,36 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
               placeholder="Search for events, workshops, festivals..."
               className="w-full py-3.5 pl-12 pr-32 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:bg-white transition-all outline-none text-slate-800"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchChange}
+              onFocus={() => setShowSuggestions(true)}
             />
-            <button className="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm">
+            <button 
+              onClick={handleSearchSubmit}
+              className="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm">
               Search
             </button>
+
+            {/* Suggestions Dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <>
+                <div 
+                  className="fixed inset-0 z-10" 
+                  onClick={() => setShowSuggestions(false)}
+                ></div>
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-20 max-h-60 overflow-y-auto">
+                  {suggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors text-slate-700 flex items-center space-x-3"
+                    >
+                      <Search className="w-4 h-4 text-slate-400" />
+                      <span>{suggestion}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -231,58 +338,64 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
           <Flame className="w-6 h-6 text-orange-500" />
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-          {featuredEvents.map((event) => (
-            <div
-              key={event.id}
-              className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden group cursor-pointer border border-slate-100"
-            >
-              <div className="relative h-48 overflow-hidden">
-                <img
-                  src={event.image}
-                  alt={event.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-                
-                <span
-                  className={`absolute top-4 right-4 px-3 py-1 rounded-full text-white font-semibold text-xs ${
-                    event.tag === "HOT"
-                      ? "bg-red-500"
-                      : event.tag === "NEW"
-                      ? "bg-emerald-500"
-                      : "bg-orange-500"
-                  }`}
-                >
-                  {event.tag}
-                </span>
-              </div>
-
-              <div className="p-6">
-                <h3 className="text-lg font-bold text-slate-800 mb-3 line-clamp-2">
-                  {event.title}
-                </h3>
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center text-slate-600 text-sm">
-                    <Calendar className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
-                    <span>{event.date}</span>
-                    <Clock className="w-4 h-4 text-indigo-600 ml-4 mr-2 flex-shrink-0" />
-                    <span>{event.time}</span>
-                  </div>
-                  <div className="flex items-center text-slate-600 text-sm">
-                    <MapPin className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
-                    <span>{event.location}</span>
-                  </div>
+        {filteredEvents.featured.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-slate-500 text-lg">No featured events found matching your search.</p>
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            {filteredEvents.featured.map((event) => (
+              <div
+                key={event.id}
+                className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden group cursor-pointer border border-slate-100"
+              >
+                <div className="relative h-48 overflow-hidden">
+                  <img
+                    src={event.image}
+                    alt={event.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                  
+                  <span
+                    className={`absolute top-4 right-4 px-3 py-1 rounded-full text-white font-semibold text-xs ${
+                      event.tag === "HOT"
+                        ? "bg-red-500"
+                        : event.tag === "NEW"
+                        ? "bg-emerald-500"
+                        : "bg-orange-500"
+                    }`}
+                  >
+                    {event.tag}
+                  </span>
                 </div>
 
-                <button className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-lg font-semibold text-sm transition-all">
-                  View Details
-                </button>
+                <div className="p-6">
+                  <h3 className="text-lg font-bold text-slate-800 mb-3 line-clamp-2">
+                    {event.title}
+                  </h3>
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center text-slate-600 text-sm">
+                      <Calendar className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
+                      <span>{event.date}</span>
+                      <Clock className="w-4 h-4 text-indigo-600 ml-4 mr-2 flex-shrink-0" />
+                      <span>{event.time}</span>
+                    </div>
+                    <div className="flex items-center text-slate-600 text-sm">
+                      <MapPin className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
+                      <span>{event.location}</span>
+                    </div>
+                  </div>
+
+                  <button className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-lg font-semibold text-sm transition-all">
+                    View Details
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Upcoming Events */}
@@ -294,44 +407,50 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
             <TrendingUp className="w-6 h-6 text-indigo-600" />
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {upcomingEvents.map((event) => (
-              <div
-                key={event.id}
-                className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden cursor-pointer border border-slate-100"
-              >
-                <div className="relative h-40 overflow-hidden">
-                  <img
-                    src={event.image}
-                    alt={event.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                </div>
-
-                <div className="p-6">
-                  <h3 className="text-lg font-bold text-slate-800 mb-3 line-clamp-2">
-                    {event.title}
-                  </h3>
-
-                  <div className="flex items-center justify-between text-slate-600 text-sm mb-4">
-                    <span className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-2 text-indigo-600" />
-                      {event.date}
-                    </span>
-                    <span className="flex items-center">
-                      <Users className="w-4 h-4 mr-2 text-indigo-600" />
-                      {event.attendees}
-                    </span>
+          {filteredEvents.upcoming.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-slate-500 text-lg">No upcoming events found matching your search.</p>
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+              {filteredEvents.upcoming.map((event) => (
+                <div
+                  key={event.id}
+                  className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden cursor-pointer border border-slate-100"
+                >
+                  <div className="relative h-40 overflow-hidden">
+                    <img
+                      src={event.image}
+                      alt={event.title}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                   </div>
 
-                  <button className="w-full py-2.5 border-2 border-indigo-600 text-indigo-600 rounded-xl font-semibold hover:bg-indigo-600 hover:text-white transition-all text-sm">
-                    Register Now
-                  </button>
+                  <div className="p-6">
+                    <h3 className="text-lg font-bold text-slate-800 mb-3 line-clamp-2">
+                      {event.title}
+                    </h3>
+
+                    <div className="flex items-center justify-between text-slate-600 text-sm mb-4">
+                      <span className="flex items-center">
+                        <Calendar className="w-4 h-4 mr-2 text-indigo-600" />
+                        {event.date}
+                      </span>
+                      <span className="flex items-center">
+                        <Users className="w-4 h-4 mr-2 text-indigo-600" />
+                        {event.attendees}
+                      </span>
+                    </div>
+
+                    <button className="w-full py-2.5 border-2 border-indigo-600 text-indigo-600 rounded-xl font-semibold hover:bg-indigo-600 hover:text-white transition-all text-sm">
+                      Register Now
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

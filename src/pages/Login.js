@@ -52,7 +52,7 @@ const LoginPage = ({ onNavigate, onLogin }) => {
             Welcome back! Please login to your account.
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-6">
             {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -65,7 +65,7 @@ const LoginPage = ({ onNavigate, onLogin }) => {
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
-                className="w-full px-6 py-4 bg-gray-100 rounded-full focus:ring-2 focus:ring-purple-400 focus:outline-none"
+                className="w-full px-6 py-4 bg-gray-100 rounded-full focus:ring-2 focus:ring-purple-400 focus:outline-none text-gray-700"
                 required
               />
             </div>
@@ -83,7 +83,7 @@ const LoginPage = ({ onNavigate, onLogin }) => {
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
-                  className="w-full px-6 py-4 bg-gray-100 rounded-full focus:ring-2 focus:ring-purple-400 focus:outline-none pr-12"
+                  className="w-full px-6 py-4 bg-gray-100 rounded-full focus:ring-2 focus:ring-purple-400 focus:outline-none pr-12 text-gray-700"
                   required
                 />
                 <button
@@ -105,7 +105,7 @@ const LoginPage = ({ onNavigate, onLogin }) => {
 
             {/* SUBMIT BUTTON */}
             <button
-              type="submit"
+              onClick={handleSubmit}
               disabled={loading}
               className="w-full py-4 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-full font-semibold hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -149,7 +149,7 @@ const LoginPage = ({ onNavigate, onLogin }) => {
             >
               Back to Home
             </button>
-          </form>
+          </div>
         </div>
       </div>
 

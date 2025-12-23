@@ -10,35 +10,114 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
     phone_number: "",
     enrollment_number: "",
     clg_name: "",
-    course: "B.Tech",
+    course: "",
     password: "",
     confirmPassword: "",
   });
 
   const [error, setError] = useState("");
-  const [validationErrors, setValidationErrors] = useState({});
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Validation rules
+  const validateField = (name, value) => {
+    switch (name) {
+      case "name":
+        if (!value.trim()) return "Full name is required";
+        if (value.trim().length < 2) return "Name must be at least 2 characters";
+        return "";
+      
+      case "email":
+        if (!value) return "Email is required";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Invalid email format";
+        return "";
+      
+      case "phone_number":
+        if (!value) return "Phone number is required";
+        if (!/^\d+$/.test(value)) return "Phone number must contain only digits";
+        if (value.length < 10 || value.length > 12) return "Phone number must be 10-12 digits";
+        return "";
+      
+      case "enrollment_number":
+        if (!value.trim()) return "Enrollment number is required";
+        return "";
+      
+      case "clg_name":
+        if (!value.trim()) return "College name is required";
+        return "";
+      
+      case "course":
+        if (!value || value === "") return "Please select a course";
+        return "";
+      
+      case "password":
+        if (!value) return "Password is required";
+        if (value.length < 6) return "Password must be at least 6 characters";
+        if (value.length > 8) return "Password must not exceed 8 characters";
+        return "";
+      
+      case "confirmPassword":
+        if (!value) return "Please confirm your password";
+        if (value !== formData.password) return "Passwords do not match";
+        return "";
+      
+      default:
+        return "";
+    }
+  };
+
+  // Handle field change
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    // Clear error for this field when user starts typing
+    if (touched[name]) {
+      const error = validateField(name, value);
+      setFieldErrors({ ...fieldErrors, [name]: error });
+    }
+  };
+
+  // Handle field blur
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched({ ...touched, [name]: true });
+    
+    const error = validateField(name, value);
+    setFieldErrors({ ...fieldErrors, [name]: error });
+  };
+
+  // Validate all fields
+  const validateAllFields = () => {
+    const errors = {};
+    Object.keys(formData).forEach(key => {
+      const error = validateField(key, formData[key]);
+      if (error) errors[key] = error;
+    });
+    return errors;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setValidationErrors({});
+    
+    // Mark all fields as touched
+    const allTouched = {};
+    Object.keys(formData).forEach(key => {
+      allTouched[key] = true;
+    });
+    setTouched(allTouched);
 
-    // Client-side validation
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
+    // Validate all fields
+    const errors = validateAllFields();
+    setFieldErrors(errors);
 
-    if (formData.password.length < 6 || formData.password.length > 8) {
-      setError("Password must be between 6-8 characters");
-      return;
-    }
-
-    if (formData.phone_number.length < 10 || formData.phone_number.length > 12) {
-      setError("Phone number must be between 10-12 digits");
+    // If there are errors, don't submit
+    if (Object.keys(errors).length > 0) {
+      setError("Please fix all errors before submitting");
       return;
     }
 
@@ -58,19 +137,10 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
       }
 
     } catch (err) {
-      if (err.errors) {
-        setValidationErrors(err.errors);
-        setError("Please fix the errors below");
-      } else {
-        setError(err.message || "Registration failed. Please try again.");
-      }
+      setError(err.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const getFieldError = (fieldName) => {
-    return validationErrors[fieldName]?.[0];
   };
 
   return (
@@ -91,7 +161,7 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
             Join thousands of students discovering amazing events
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-4">
             {/* NAME */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -99,18 +169,17 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
               </label>
               <input
                 type="text"
+                name="name"
                 placeholder="Enter your full name"
                 value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className={`w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:outline-none ${
-                  getFieldError('name') ? 'ring-2 ring-red-400' : 'focus:ring-purple-400'
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:outline-none text-gray-700 ${
+                  fieldErrors.name && touched.name ? 'ring-2 ring-red-400' : 'focus:ring-purple-400'
                 }`}
-                required
               />
-              {getFieldError('name') && (
-                <p className="text-red-500 text-xs mt-1 ml-4">{getFieldError('name')}</p>
+              {fieldErrors.name && touched.name && (
+                <p className="text-red-500 text-xs mt-1 ml-4">{fieldErrors.name}</p>
               )}
             </div>
 
@@ -121,18 +190,17 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
               </label>
               <input
                 type="email"
+                name="email"
                 placeholder="your.email@example.com"
                 value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                className={`w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:outline-none ${
-                  getFieldError('email') ? 'ring-2 ring-red-400' : 'focus:ring-purple-400'
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:outline-none text-gray-700 ${
+                  fieldErrors.email && touched.email ? 'ring-2 ring-red-400' : 'focus:ring-purple-400'
                 }`}
-                required
               />
-              {getFieldError('email') && (
-                <p className="text-red-500 text-xs mt-1 ml-4">{getFieldError('email')}</p>
+              {fieldErrors.email && touched.email && (
+                <p className="text-red-500 text-xs mt-1 ml-4">{fieldErrors.email}</p>
               )}
             </div>
 
@@ -143,18 +211,17 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
               </label>
               <input
                 type="tel"
+                name="phone_number"
                 placeholder="10-12 digits"
                 value={formData.phone_number}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone_number: e.target.value })
-                }
-                className={`w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:outline-none ${
-                  getFieldError('phone_number') ? 'ring-2 ring-red-400' : 'focus:ring-purple-400'
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:outline-none text-gray-700 ${
+                  fieldErrors.phone_number && touched.phone_number ? 'ring-2 ring-red-400' : 'focus:ring-purple-400'
                 }`}
-                required
               />
-              {getFieldError('phone_number') && (
-                <p className="text-red-500 text-xs mt-1 ml-4">{getFieldError('phone_number')}</p>
+              {fieldErrors.phone_number && touched.phone_number && (
+                <p className="text-red-500 text-xs mt-1 ml-4">{fieldErrors.phone_number}</p>
               )}
             </div>
 
@@ -165,21 +232,17 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
               </label>
               <input
                 type="text"
+                name="enrollment_number"
                 placeholder="Your enrollment number"
                 value={formData.enrollment_number}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    enrollment_number: e.target.value,
-                  })
-                }
-                className={`w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:outline-none ${
-                  getFieldError('enrollment_number') ? 'ring-2 ring-red-400' : 'focus:ring-purple-400'
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:outline-none text-gray-700 ${
+                  fieldErrors.enrollment_number && touched.enrollment_number ? 'ring-2 ring-red-400' : 'focus:ring-purple-400'
                 }`}
-                required
               />
-              {getFieldError('enrollment_number') && (
-                <p className="text-red-500 text-xs mt-1 ml-4">{getFieldError('enrollment_number')}</p>
+              {fieldErrors.enrollment_number && touched.enrollment_number && (
+                <p className="text-red-500 text-xs mt-1 ml-4">{fieldErrors.enrollment_number}</p>
               )}
             </div>
 
@@ -190,14 +253,18 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
               </label>
               <input
                 type="text"
+                name="clg_name"
                 placeholder="Your college/university name"
                 value={formData.clg_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, clg_name: e.target.value })
-                }
-                className="w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:ring-purple-400 focus:outline-none"
-                required
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:outline-none text-gray-700 ${
+                  fieldErrors.clg_name && touched.clg_name ? 'ring-2 ring-red-400' : 'focus:ring-purple-400'
+                }`}
               />
+              {fieldErrors.clg_name && touched.clg_name && (
+                <p className="text-red-500 text-xs mt-1 ml-4">{fieldErrors.clg_name}</p>
+              )}
             </div>
 
             {/* SELECT COURSE */}
@@ -206,13 +273,15 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
                 Course
               </label>
               <select
+                name="course"
                 value={formData.course}
-                onChange={(e) =>
-                  setFormData({ ...formData, course: e.target.value })
-                }
-                className="w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:ring-purple-400 focus:outline-none"
-                required
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:outline-none text-gray-700 ${
+                  fieldErrors.course && touched.course ? 'ring-2 ring-red-400' : 'focus:ring-purple-400'
+                }`}
               >
+                <option value="">Select Course</option>
                 <option value="B.Tech">B.Tech</option>
                 <option value="BBA">BBA</option>
                 <option value="BCA">BCA</option>
@@ -223,6 +292,9 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
                 <option value="BA">BA</option>
                 <option value="MA">MA</option>
               </select>
+              {fieldErrors.course && touched.course && (
+                <p className="text-red-500 text-xs mt-1 ml-4">{fieldErrors.course}</p>
+              )}
             </div>
 
             {/* PASSWORD */}
@@ -233,15 +305,14 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
+                  name="password"
                   placeholder="Create password"
                   value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  className="w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:ring-purple-400 focus:outline-none pr-12"
-                  required
-                  minLength={6}
-                  maxLength={8}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:outline-none pr-12 text-gray-700 ${
+                    fieldErrors.password && touched.password ? 'ring-2 ring-red-400' : 'focus:ring-purple-400'
+                  }`}
                 />
                 <button
                   type="button"
@@ -251,6 +322,9 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {fieldErrors.password && touched.password && (
+                <p className="text-red-500 text-xs mt-1 ml-4">{fieldErrors.password}</p>
+              )}
             </div>
 
             {/* CONFIRM PASSWORD */}
@@ -261,16 +335,14 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
               <div className="relative">
                 <input
                   type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
                   placeholder="Confirm your password"
                   value={formData.confirmPassword}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      confirmPassword: e.target.value,
-                    })
-                  }
-                  className="w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:ring-purple-400 focus:outline-none pr-12"
-                  required
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full px-6 py-3 bg-gray-100 rounded-full focus:ring-2 focus:outline-none pr-12 text-gray-700 ${
+                    fieldErrors.confirmPassword && touched.confirmPassword ? 'ring-2 ring-red-400' : 'focus:ring-purple-400'
+                  }`}
                 />
                 <button
                   type="button"
@@ -280,6 +352,9 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
                   {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {fieldErrors.confirmPassword && touched.confirmPassword && (
+                <p className="text-red-500 text-xs mt-1 ml-4">{fieldErrors.confirmPassword}</p>
+              )}
             </div>
 
             {/* ERROR MESSAGE */}
@@ -291,7 +366,7 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
 
             {/* SUBMIT BUTTON */}
             <button
-              type="submit"
+              onClick={handleSubmit}
               disabled={loading}
               className="w-full py-4 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-full font-semibold hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -318,19 +393,17 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
             >
               Back to Home
             </button>
-          </form>
+          </div>
         </div>
       </div>
 
-      {/* Right Side - Illustration Panel - FIXED WITH STICKY POSITIONING */}
+      {/* Right Side - Illustration Panel */}
       <div className="hidden lg:block lg:w-1/2 bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 relative overflow-hidden">
-        {/* Background Animations */}
         <div className="absolute inset-0">
           <div className="absolute top-20 left-10 w-72 h-72 bg-blue-300 rounded-full blur-3xl opacity-20 animate-pulse"></div>
           <div className="absolute bottom-20 right-10 w-72 h-72 bg-purple-300 rounded-full blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}></div>
         </div>
 
-        {/* Content Box - Sticky positioned to stay centered in viewport */}
         <div className="sticky top-0 h-screen flex items-center justify-center p-12">
           <div className="relative z-10 text-center text-white max-w-md">
             <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 mb-8 border border-white/20">
