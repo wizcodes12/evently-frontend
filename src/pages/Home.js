@@ -13,81 +13,83 @@ import {
   User,
   Settings,
   TrendingUp,
-  Flame
+  Flame,
+  AlertCircle
 } from "lucide-react";
+import api from "../api/axios";
 
 const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogout = () => {}, onNavigate = () => {} }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [filteredEvents, setFilteredEvents] = useState({ featured: [], upcoming: [] });
+  const [featuredEvents, setFeaturedEvents] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [filteredFeatured, setFilteredFeatured] = useState([]);
+  const [filteredUpcoming, setFilteredUpcoming] = useState([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const allEvents = {
-    featured: [
-      {
-        id: 1,
-        title: "Campus Music Festival",
-        date: "Oct 20, 2025",
-        time: "6:00 PM",
-        tag: "HOT",
-        location: "Main Auditorium",
-        image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1200&q=80",
-      },
-      {
-        id: 2,
-        title: "Student Art Exhibition",
-        date: "Oct 25, 2025",
-        time: "2:00 PM",
-        tag: "NEW",
-        location: "Art Gallery",
-        image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&q=80",
-      },
-      {
-        id: 3,
-        title: "Inter-College Sports Meet",
-        date: "Nov 1, 2025",
-        time: "8:00 AM",
-        tag: "TRENDING",
-        location: "Sports Complex",
-        image: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1200&q=80",
-      },
-    ],
-    upcoming: [
-      {
-        id: 4,
-        title: "Tech Symposium 2025",
-        date: "Nov 5, 2025",
-        attendees: 250,
-        image: "https://images.unsplash.com/photo-1543258103-a62bdc0697bf?w=1200&q=80",
-      },
-      {
-        id: 5,
-        title: "Cultural Night",
-        date: "Nov 8, 2025",
-        attendees: 180,
-        image: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1200&q=80",
-      },
-      {
-        id: 6,
-        title: "24hr Hackathon",
-        date: "Nov 12, 2025",
-        attendees: 320,
-        image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&q=80",
-      },
-    ]
+  // Fetch events on component mount
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const fetchEvents = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [featuredRes, latestRes] = await Promise.all([
+        api.events.getFeatured(),
+        api.events.getLatest()
+      ]);
+
+      if (featuredRes.success) {
+        setFeaturedEvents(featuredRes.data);
+        setFilteredFeatured(featuredRes.data);
+      }
+
+      if (latestRes.success) {
+        setUpcomingEvents(latestRes.data);
+        setFilteredUpcoming(latestRes.data);
+      }
+
+    } catch (err) {
+      console.error('Error fetching events:', err);
+      setError(err.message || 'Failed to load events');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Initialize with all events
-  useEffect(() => {
-    setFilteredEvents(allEvents);
-  }, []);
+  // Format date helper
+  const formatDate = (datetime) => {
+    if (!datetime) return 'TBA';
+    const date = new Date(datetime);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  };
+
+  // Format time helper
+  const formatTime = (datetime) => {
+    if (!datetime) return 'TBA';
+    const date = new Date(datetime);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
 
   // Get all event titles for suggestions
   const getAllEventTitles = () => {
     const allTitles = [
-      ...allEvents.featured.map(e => e.title),
-      ...allEvents.upcoming.map(e => e.title)
+      ...featuredEvents.map(e => e.title),
+      ...upcomingEvents.map(e => e.title)
     ];
     return allTitles;
   };
@@ -107,25 +109,27 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
   // Handle search
   const handleSearch = (query) => {
     if (!query.trim()) {
-      setFilteredEvents(allEvents);
+      setFilteredFeatured(featuredEvents);
+      setFilteredUpcoming(upcomingEvents);
       return;
     }
 
     const searchTerm = query.toLowerCase();
     
-    const filteredFeatured = allEvents.featured.filter(event =>
+    const filtered1 = featuredEvents.filter(event =>
       event.title.toLowerCase().includes(searchTerm) ||
-      event.location.toLowerCase().includes(searchTerm)
+      event.description?.toLowerCase().includes(searchTerm) ||
+      event.venue?.toLowerCase().includes(searchTerm)
     );
 
-    const filteredUpcoming = allEvents.upcoming.filter(event =>
-      event.title.toLowerCase().includes(searchTerm)
+    const filtered2 = upcomingEvents.filter(event =>
+      event.title.toLowerCase().includes(searchTerm) ||
+      event.description?.toLowerCase().includes(searchTerm) ||
+      event.venue?.toLowerCase().includes(searchTerm)
     );
 
-    setFilteredEvents({
-      featured: filteredFeatured,
-      upcoming: filteredUpcoming
-    });
+    setFilteredFeatured(filtered1);
+    setFilteredUpcoming(filtered2);
   };
 
   // Handle search input change
@@ -146,6 +150,11 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
   const handleSearchSubmit = () => {
     setShowSuggestions(false);
     handleSearch(searchQuery);
+  };
+
+  // Handle event click
+  const handleEventClick = (slug) => {
+    onNavigate(`event-details-${slug}`);
   };
 
   const suggestions = getSuggestions();
@@ -286,7 +295,7 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
         </div>
       </div>
 
-      {/* Search Bar with Suggestions */}
+      {/* Search Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 mb-12">
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <div className="relative">
@@ -305,7 +314,6 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
               Search
             </button>
 
-            {/* Suggestions Dropdown */}
             {showSuggestions && suggestions.length > 0 && (
               <>
                 <div 
@@ -330,101 +338,73 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
         </div>
       </div>
 
-      {/* Featured Events */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="flex items-center space-x-3 mb-8">
-          <div className="w-1 h-8 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full"></div>
-          <h2 className="text-2xl lg:text-3xl font-bold text-slate-800">Featured Events</h2>
-          <Flame className="w-6 h-6 text-orange-500" />
+      {/* Loading State */}
+      {loading && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-slate-600 font-medium">Loading events...</p>
+          </div>
         </div>
+      )}
 
-        {filteredEvents.featured.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-slate-500 text-lg">No featured events found matching your search.</p>
-          </div>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {filteredEvents.featured.map((event) => (
-              <div
-                key={event.id}
-                className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden group cursor-pointer border border-slate-100"
+      {/* Error State */}
+      {error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-red-800 mb-1">Error Loading Events</h3>
+              <p className="text-red-600 text-sm">{error}</p>
+              <button 
+                onClick={fetchEvents}
+                className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
               >
-                <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={event.image}
-                    alt={event.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-                  
-                  <span
-                    className={`absolute top-4 right-4 px-3 py-1 rounded-full text-white font-semibold text-xs ${
-                      event.tag === "HOT"
-                        ? "bg-red-500"
-                        : event.tag === "NEW"
-                        ? "bg-emerald-500"
-                        : "bg-orange-500"
-                    }`}
-                  >
-                    {event.tag}
-                  </span>
-                </div>
-
-                <div className="p-6">
-                  <h3 className="text-lg font-bold text-slate-800 mb-3 line-clamp-2">
-                    {event.title}
-                  </h3>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-slate-600 text-sm">
-                      <Calendar className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
-                      <span>{event.date}</span>
-                      <Clock className="w-4 h-4 text-indigo-600 ml-4 mr-2 flex-shrink-0" />
-                      <span>{event.time}</span>
-                    </div>
-                    <div className="flex items-center text-slate-600 text-sm">
-                      <MapPin className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
-                      <span>{event.location}</span>
-                    </div>
-                  </div>
-
-                  <button className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-lg font-semibold text-sm transition-all">
-                    View Details
-                  </button>
-                </div>
-              </div>
-            ))}
+                Retry
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Upcoming Events */}
-      <div className="bg-slate-50 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Featured Events */}
+      {!loading && !error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex items-center space-x-3 mb-8">
             <div className="w-1 h-8 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full"></div>
-            <h2 className="text-2xl lg:text-3xl font-bold text-slate-800">Upcoming Events</h2>
-            <TrendingUp className="w-6 h-6 text-indigo-600" />
+            <h2 className="text-2xl lg:text-3xl font-bold text-slate-800">Featured Events</h2>
+            <Flame className="w-6 h-6 text-orange-500" />
           </div>
 
-          {filteredEvents.upcoming.length === 0 ? (
+          {filteredFeatured.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-slate-500 text-lg">No upcoming events found matching your search.</p>
+              <p className="text-slate-500 text-lg">No featured events found matching your search.</p>
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-              {filteredEvents.upcoming.map((event) => (
+              {filteredFeatured.map((event) => (
                 <div
                   key={event.id}
-                  className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden cursor-pointer border border-slate-100"
+                  onClick={() => handleEventClick(event.slug)}
+                  className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden group cursor-pointer border border-slate-100"
                 >
-                  <div className="relative h-40 overflow-hidden">
-                    <img
-                      src={event.image}
-                      alt={event.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                  <div className="relative h-48 overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100">
+                    {event.banner_image ? (
+                      <img
+                        src={event.banner_image}
+                        alt={event.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Calendar className="w-16 h-16 text-indigo-300" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                    
+                    <span className="absolute top-4 right-4 px-3 py-1 rounded-full bg-orange-500 text-white font-semibold text-xs">
+                      FEATURED
+                    </span>
                   </div>
 
                   <div className="p-6">
@@ -432,19 +412,29 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
                       {event.title}
                     </h3>
 
-                    <div className="flex items-center justify-between text-slate-600 text-sm mb-4">
-                      <span className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-2 text-indigo-600" />
-                        {event.date}
+                    {event.category && (
+                      <span className="inline-block px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium mb-3">
+                        {event.category.name}
                       </span>
-                      <span className="flex items-center">
-                        <Users className="w-4 h-4 mr-2 text-indigo-600" />
-                        {event.attendees}
-                      </span>
+                    )}
+
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center text-slate-600 text-sm">
+                        <Calendar className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
+                        <span>{formatDate(event.start_datetime)}</span>
+                        <Clock className="w-4 h-4 text-indigo-600 ml-4 mr-2 flex-shrink-0" />
+                        <span>{formatTime(event.start_datetime)}</span>
+                      </div>
+                      {event.venue && (
+                        <div className="flex items-center text-slate-600 text-sm">
+                          <MapPin className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
+                          <span className="line-clamp-1">{event.venue}</span>
+                        </div>
+                      )}
                     </div>
 
-                    <button className="w-full py-2.5 border-2 border-indigo-600 text-indigo-600 rounded-xl font-semibold hover:bg-indigo-600 hover:text-white transition-all text-sm">
-                      Register Now
+                    <button className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-lg font-semibold text-sm transition-all">
+                      View Details
                     </button>
                   </div>
                 </div>
@@ -452,7 +442,79 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
             </div>
           )}
         </div>
-      </div>
+      )}
+
+      {/* Upcoming Events */}
+      {!loading && !error && (
+        <div className="bg-slate-50 py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center space-x-3 mb-8">
+              <div className="w-1 h-8 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full"></div>
+              <h2 className="text-2xl lg:text-3xl font-bold text-slate-800">Latest Events</h2>
+              <TrendingUp className="w-6 h-6 text-indigo-600" />
+            </div>
+
+            {filteredUpcoming.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-slate-500 text-lg">No latest events found matching your search.</p>
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+                {filteredUpcoming.map((event) => (
+                  <div
+                    key={event.id}
+                    onClick={() => handleEventClick(event.slug)}
+                    className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden cursor-pointer border border-slate-100"
+                  >
+                    <div className="relative h-40 overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100">
+                      {event.banner_image ? (
+                        <img
+                          src={event.banner_image}
+                          alt={event.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Calendar className="w-12 h-12 text-indigo-300" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                    </div>
+
+                    <div className="p-6">
+                      <h3 className="text-lg font-bold text-slate-800 mb-3 line-clamp-2">
+                        {event.title}
+                      </h3>
+
+                      {event.category && (
+                        <span className="inline-block px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium mb-3">
+                          {event.category.name}
+                        </span>
+                      )}
+
+                      <div className="flex items-center justify-between text-slate-600 text-sm mb-4">
+                        <span className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-2 text-indigo-600" />
+                          {formatDate(event.start_datetime)}
+                        </span>
+                        {event.mode && (
+                          <span className="px-2 py-1 bg-slate-100 rounded text-xs font-medium">
+                            {event.mode.toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+
+                      <button className="w-full py-2.5 border-2 border-indigo-600 text-indigo-600 rounded-xl font-semibold hover:bg-indigo-600 hover:text-white transition-all text-sm">
+                        Register Now
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="bg-slate-900 text-white py-12 mt-12">

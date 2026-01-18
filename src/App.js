@@ -6,11 +6,13 @@ import RegisterPage from "./pages/Register";
 import HomePage from "./pages/Home";
 import BrowseEventsPage from "./pages/BrowseEvents";
 import EventGalleryPage from "./pages/EventGallery";
+import EventDetailsPage from "./pages/EventDetails";
 
 const App = () => {
   const [currentPage, setCurrentPage] = useState("landing");
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [eventSlug, setEventSlug] = useState(null);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -48,6 +50,14 @@ const App = () => {
 
   // Handle page navigation with validation
   const handleNavigate = (page) => {
+    // Check if it's an event details page (format: event-details-{slug})
+    if (page.startsWith('event-details-')) {
+      const slug = page.replace('event-details-', '');
+      setEventSlug(slug);
+      setCurrentPage('event-details');
+      return;
+    }
+
     // Valid pages
     const validPages = ["landing", "login", "register", "home", "browse", "gallery"];
     
@@ -110,6 +120,15 @@ const App = () => {
 
       {currentPage === "gallery" && user && (
         <EventGalleryPage
+          user={user}
+          onLogout={handleLogout}
+          onNavigate={handleNavigate}
+        />
+      )}
+
+      {currentPage === "event-details" && user && eventSlug && (
+        <EventDetailsPage
+          eventSlug={eventSlug}
           user={user}
           onLogout={handleLogout}
           onNavigate={handleNavigate}

@@ -1,104 +1,125 @@
 // src/pages/BrowseEvents.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Sparkles,
   Bell,
-  Search,
-  Calendar,
-  Users,
-  Clock,
-  MapPin,
-  LogOut,
   Menu,
   X,
   User,
   Settings,
-  TrendingUp,
-  Flame,
-  Star
+  LogOut,
+  Calendar,
+  Clock,
+  MapPin,
+  Search,
+  Filter,
+  SlidersHorizontal,
+  Grid3x3,
+  List,
+  AlertCircle
 } from "lucide-react";
+import api from "../api/axios";
 
 const BrowseEventsPage = ({ user, onLogout, onNavigate }) => {
+  const [events, setEvents] = useState([]);
+  const [filteredEvents, setFilteredEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedMode, setSelectedMode] = useState("all");
+  const [viewMode, setViewMode] = useState("grid");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
-  const featuredEvents = [
-    {
-      id: 1,
-      title: "Campus Music Festival",
-      date: "Oct 20, 2025",
-      time: "6:00 PM",
-      tag: "HOT",
-      location: "Main Auditorium",
-      image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1200&q=80",
-    },
-    {
-      id: 2,
-      title: "Student Art Exhibition",
-      date: "Oct 25, 2025",
-      time: "2:00 PM",
-      tag: "NEW",
-      location: "Art Gallery",
-      image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&q=80",
-    },
-    {
-      id: 3,
-      title: "Inter-College Sports Meet",
-      date: "Nov 1, 2025",
-      time: "8:00 AM",
-      tag: "TRENDING",
-      location: "Sports Complex",
-      image: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1200&q=80",
-    },
-  ];
+  useEffect(() => {
+    fetchAllEvents();
+  }, []);
 
-  const upcomingEvents = [
-    {
-      id: 4,
-      title: "Tech Symposium 2025",
-      date: "Nov 5, 2025",
-      attendees: 250,
-      image: "https://images.unsplash.com/photo-1543258103-a62bdc0697bf?w=1200&q=80",
-    },
-    {
-      id: 5,
-      title: "Cultural Night",
-      date: "Nov 8, 2025",
-      attendees: 180,
-      image: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1200&q=80",
-    },
-    {
-      id: 6,
-      title: "24hr Hackathon",
-      date: "Nov 12, 2025",
-      attendees: 320,
-      image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&q=80",
-    },
-  ];
+  useEffect(() => {
+    applyFilters();
+  }, [events, searchQuery, selectedCategory, selectedMode]);
 
-  const trendingEvents = [
-    {
-      id: 7,
-      title: "Startup Pitch Competition",
-      date: "Nov 15, 2025",
-      attendees: 150,
-      image: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=1200&q=80",
-    },
-    {
-      id: 8,
-      title: "Photography Workshop",
-      date: "Nov 18, 2025",
-      attendees: 80,
-      image: "https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=1200&q=80",
-    },
-    {
-      id: 9,
-      title: "Dance Battle Championship",
-      date: "Nov 20, 2025",
-      attendees: 200,
-      image: "https://images.unsplash.com/photo-1504609773096-104ff2c73ba4?w=1200&q=80",
-    },
-  ];
+  const fetchAllEvents = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.events.getAll();
+      
+      if (response.success) {
+        setEvents(response.data);
+        setFilteredEvents(response.data);
+      }
+    } catch (err) {
+      console.error('Error fetching events:', err);
+      setError(err.message || 'Failed to load events');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...events];
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(event =>
+        event.title.toLowerCase().includes(query) ||
+        event.description?.toLowerCase().includes(query) ||
+        event.venue?.toLowerCase().includes(query)
+      );
+    }
+
+    // Category filter
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(event => 
+        event.category?.name.toLowerCase() === selectedCategory.toLowerCase()
+      );
+    }
+
+    // Mode filter
+    if (selectedMode !== "all") {
+      filtered = filtered.filter(event => 
+        event.mode?.toLowerCase() === selectedMode.toLowerCase()
+      );
+    }
+
+    setFilteredEvents(filtered);
+  };
+
+  const formatDate = (datetime) => {
+    if (!datetime) return 'TBA';
+    const date = new Date(datetime);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  };
+
+  const formatTime = (datetime) => {
+    if (!datetime) return 'TBA';
+    const date = new Date(datetime);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  const getUniqueCategories = () => {
+    const categories = events
+      .map(event => event.category?.name)
+      .filter(Boolean);
+    return [...new Set(categories)];
+  };
+
+  const handleEventClick = (slug) => {
+    onNavigate(`event-details-${slug}`);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
@@ -131,9 +152,6 @@ const BrowseEventsPage = ({ user, onLogout, onNavigate }) => {
                 className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors">
                 Event Gallery
               </button>
-              <button className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors">
-                My Registrations
-              </button>
               
               <button className="relative p-2 text-slate-700 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors ml-2">
                 <Bell className="w-5 h-5" />
@@ -146,9 +164,9 @@ const BrowseEventsPage = ({ user, onLogout, onNavigate }) => {
                   className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
                 >
                   <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                    {user?.name?.charAt(0) || 'P'}
+                    {user?.name?.charAt(0) || 'U'}
                   </div>
-                  <span className="font-medium text-slate-700 text-sm">{user?.name?.split(' ')[0] || 'Patel'}</span>
+                  <span className="font-medium text-slate-700 text-sm">{user?.name?.split(' ')[0]}</span>
                 </button>
 
                 {isProfileMenuOpen && (
@@ -192,224 +210,278 @@ const BrowseEventsPage = ({ user, onLogout, onNavigate }) => {
             </button>
           </div>
         </div>
-
-        {isMenuOpen && (
-          <div className="md:hidden border-t border-slate-200 bg-white">
-            <div className="px-4 py-3 space-y-1">
-              <button onClick={() => onNavigate("home")} className="block w-full text-left px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-                Home
-              </button>
-              <button onClick={() => onNavigate("browse")} className="block w-full text-left px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg">
-                Browse Events
-              </button>
-              <button onClick={() => onNavigate("gallery")} className="block w-full text-left px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-                Event Gallery
-              </button>
-              <button className="block w-full text-left px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-                My Registrations
-              </button>
-              <button className="block w-full text-left px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-                Profile
-              </button>
-              <button
-                onClick={onLogout}
-                className="block w-full text-left px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        )}
       </nav>
 
-      {/* Page Header */}
+      {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="text-center">
-            <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
-              Browse All Events
-            </h1>
-            <p className="text-lg text-indigo-100 max-w-2xl mx-auto">
-              Explore our complete collection of campus events and activities
-            </p>
-          </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <h1 className="text-3xl lg:text-4xl font-bold text-white mb-2">Browse All Events</h1>
+          <p className="text-lg text-indigo-100">Discover and register for upcoming campus events</p>
         </div>
       </div>
 
-      {/* Featured Events Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="flex items-center space-x-3 mb-8">
-          <div className="w-1 h-8 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full"></div>
-          <h2 className="text-2xl lg:text-3xl font-bold text-slate-800">Featured Events</h2>
-          <Flame className="w-6 h-6 text-orange-500" />
-        </div>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-          {featuredEvents.map((event) => (
-            <div
-              key={event.id}
-              className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden group cursor-pointer border border-slate-100"
-            >
-              <div className="relative h-48 overflow-hidden">
-                <img
-                  src={event.image}
-                  alt={event.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-                
-                <span
-                  className={`absolute top-4 right-4 px-3 py-1 rounded-full text-white font-semibold text-xs ${
-                    event.tag === "HOT"
-                      ? "bg-red-500"
-                      : event.tag === "NEW"
-                      ? "bg-emerald-500"
-                      : "bg-orange-500"
-                  }`}
-                >
-                  {event.tag}
-                </span>
-              </div>
-
-              <div className="p-6">
-                <h3 className="text-lg font-bold text-slate-800 mb-3 line-clamp-2">
-                  {event.title}
-                </h3>
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center text-slate-600 text-sm">
-                    <Calendar className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
-                    <span>{event.date}</span>
-                    <Clock className="w-4 h-4 text-indigo-600 ml-4 mr-2 flex-shrink-0" />
-                    <span>{event.time}</span>
-                  </div>
-                  <div className="flex items-center text-slate-600 text-sm">
-                    <MapPin className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
-                    <span>{event.location}</span>
-                  </div>
-                </div>
-
-                <button className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-lg font-semibold text-sm transition-all">
-                  View Details
-                </button>
-              </div>
+      {/* Search and Filters */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 mb-8">
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search events..."
+                className="w-full py-3 pl-12 pr-4 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:bg-white transition-all outline-none"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Upcoming Events Section */}
-      <div className="bg-slate-50 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center space-x-3 mb-8">
-            <div className="w-1 h-8 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full"></div>
-            <h2 className="text-2xl lg:text-3xl font-bold text-slate-800">Upcoming Events</h2>
-            <TrendingUp className="w-6 h-6 text-indigo-600" />
-          </div>
+            {/* Filter Toggle */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors font-medium flex items-center justify-center space-x-2"
+            >
+              <SlidersHorizontal className="w-5 h-5" />
+              <span>Filters</span>
+            </button>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {upcomingEvents.map((event) => (
-              <div
-                key={event.id}
-                className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden cursor-pointer border border-slate-100"
+            {/* View Toggle */}
+            <div className="flex bg-slate-100 rounded-xl p-1">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  viewMode === 'grid' 
+                    ? 'bg-white shadow-sm text-indigo-600' 
+                    : 'text-slate-600 hover:text-slate-800'
+                }`}
               >
-                <div className="relative h-40 overflow-hidden">
-                  <img
-                    src={event.image}
-                    alt={event.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                <Grid3x3 className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  viewMode === 'list' 
+                    ? 'bg-white shadow-sm text-indigo-600' 
+                    : 'text-slate-600 hover:text-slate-800'
+                }`}
+              >
+                <List className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Filter Options */}
+          {showFilters && (
+            <div className="mt-6 pt-6 border-t border-slate-200">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                  >
+                    <option value="all">All Categories</option>
+                    {getUniqueCategories().map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
                 </div>
 
-                <div className="p-6">
-                  <h3 className="text-lg font-bold text-slate-800 mb-3 line-clamp-2">
-                    {event.title}
-                  </h3>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Mode</label>
+                  <select
+                    value={selectedMode}
+                    onChange={(e) => setSelectedMode(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                  >
+                    <option value="all">All Modes</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                    <option value="hybrid">Hybrid</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
-                  <div className="flex items-center justify-between text-slate-600 text-sm mb-4">
-                    <span className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-2 text-indigo-600" />
-                      {event.date}
-                    </span>
-                    <span className="flex items-center">
-                      <Users className="w-4 h-4 mr-2 text-indigo-600" />
-                      {event.attendees}
-                    </span>
+      {/* Results Count */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
+        <p className="text-slate-600">
+          Showing <span className="font-semibold text-slate-800">{filteredEvents.length}</span> of <span className="font-semibold text-slate-800">{events.length}</span> events
+        </p>
+      </div>
+
+      {/* Loading State */}
+      {loading && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-slate-600 font-medium">Loading events...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-red-800 mb-1">Error Loading Events</h3>
+              <p className="text-red-600 text-sm">{error}</p>
+              <button 
+                onClick={fetchAllEvents}
+                className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Events Grid/List */}
+      {!loading && !error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+          {filteredEvents.length === 0 ? (
+            <div className="text-center py-12">
+              <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-slate-800 mb-2">No Events Found</h3>
+              <p className="text-slate-500">Try adjusting your search or filters</p>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredEvents.map((event) => (
+                <div
+                  key={event.id}
+                  onClick={() => handleEventClick(event.slug)}
+                  className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden cursor-pointer border border-slate-100"
+                >
+                  <div className="relative h-48 overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100">
+                    {event.banner_image ? (
+                      <img
+                        src={event.banner_image}
+                        alt={event.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Calendar className="w-16 h-16 text-indigo-300" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                    
+                    {event.is_featured && (
+                      <span className="absolute top-4 right-4 px-3 py-1 rounded-full bg-orange-500 text-white font-semibold text-xs">
+                        FEATURED
+                      </span>
+                    )}
                   </div>
 
-                  <button className="w-full py-2.5 border-2 border-indigo-600 text-indigo-600 rounded-xl font-semibold hover:bg-indigo-600 hover:text-white transition-all text-sm">
-                    Register Now
-                  </button>
+                  <div className="p-6">
+                    <h3 className="text-lg font-bold text-slate-800 mb-3 line-clamp-2">
+                      {event.title}
+                    </h3>
+
+                    {event.category && (
+                      <span className="inline-block px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium mb-3">
+                        {event.category.name}
+                      </span>
+                    )}
+
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center text-slate-600 text-sm">
+                        <Calendar className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
+                        <span>{formatDate(event.start_datetime)}</span>
+                      </div>
+                      <div className="flex items-center text-slate-600 text-sm">
+                        <Clock className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
+                        <span>{formatTime(event.start_datetime)}</span>
+                      </div>
+                      {event.venue && (
+                        <div className="flex items-center text-slate-600 text-sm">
+                          <MapPin className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
+                          <span className="line-clamp-1">{event.venue}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <button className="w-full py-2.5 border-2 border-indigo-600 text-indigo-600 rounded-xl font-semibold hover:bg-indigo-600 hover:text-white transition-all text-sm">
+                      View Details
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredEvents.map((event) => (
+                <div
+                  key={event.id}
+                  onClick={() => handleEventClick(event.slug)}
+                  className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden cursor-pointer border border-slate-100 flex"
+                >
+                  <div className="w-64 h-48 flex-shrink-0 bg-gradient-to-br from-indigo-100 to-purple-100 relative">
+                    {event.banner_image ? (
+                      <img
+                        src={event.banner_image}
+                        alt={event.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Calendar className="w-12 h-12 text-indigo-300" />
+                      </div>
+                    )}
+                    {event.is_featured && (
+                      <span className="absolute top-4 right-4 px-3 py-1 rounded-full bg-orange-500 text-white font-semibold text-xs">
+                        FEATURED
+                      </span>
+                    )}
+                  </div>
 
-      {/* Trending Events Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="flex items-center space-x-3 mb-8">
-          <div className="w-1 h-8 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full"></div>
-          <h2 className="text-2xl lg:text-3xl font-bold text-slate-800">Trending Events</h2>
-          <Star className="w-6 h-6 text-yellow-500" />
-        </div>
+                  <div className="flex-1 p-6">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">{event.title}</h3>
+                        {event.category && (
+                          <span className="inline-block px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium">
+                            {event.category.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-          {trendingEvents.map((event) => (
-            <div
-              key={event.id}
-              className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden cursor-pointer border border-slate-100"
-            >
-              <div className="relative h-40 overflow-hidden">
-                <img
-                  src={event.image}
-                  alt={event.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-              </div>
+                    <p className="text-slate-600 text-sm mb-4 line-clamp-2">
+                      {event.description || 'No description available.'}
+                    </p>
 
-              <div className="p-6">
-                <h3 className="text-lg font-bold text-slate-800 mb-3 line-clamp-2">
-                  {event.title}
-                </h3>
-
-                <div className="flex items-center justify-between text-slate-600 text-sm mb-4">
-                  <span className="flex items-center">
-                    <Calendar className="w-4 h-4 mr-2 text-indigo-600" />
-                    {event.date}
-                  </span>
-                  <span className="flex items-center">
-                    <Users className="w-4 h-4 mr-2 text-indigo-600" />
-                    {event.attendees}
-                  </span>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center text-slate-600 text-sm">
+                        <Calendar className="w-4 h-4 text-indigo-600 mr-2" />
+                        <span>{formatDate(event.start_datetime)}</span>
+                      </div>
+                      <div className="flex items-center text-slate-600 text-sm">
+                        <Clock className="w-4 h-4 text-indigo-600 mr-2" />
+                        <span>{formatTime(event.start_datetime)}</span>
+                      </div>
+                      {event.venue && (
+                        <div className="flex items-center text-slate-600 text-sm col-span-2">
+                          <MapPin className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
+                          <span className="line-clamp-1">{event.venue}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-
-                <button className="w-full py-2.5 border-2 border-indigo-600 text-indigo-600 rounded-xl font-semibold hover:bg-indigo-600 hover:text-white transition-all text-sm">
-                  Register Now
-                </button>
-              </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="bg-slate-900 text-white py-12 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col items-center text-center">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-2 rounded-xl">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold">Evently</span>
-            </div>
-            <p className="text-slate-400 text-sm">© 2025 Evently. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      )}
     </div>
   );
 };
