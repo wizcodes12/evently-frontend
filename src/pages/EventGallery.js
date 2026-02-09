@@ -1,5 +1,5 @@
 // src/pages/EventGallery.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Sparkles,
   Bell,
@@ -8,69 +8,76 @@ import {
   X,
   User,
   Settings,
-  Camera
+  Camera,
+  Calendar,
+  AlertCircle
 } from "lucide-react";
+import api from "../api/axios";
 
 const EventGalleryPage = ({ user, onLogout, onNavigate }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [galleryItems, setGalleryItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
 
-  const galleryItems = [
-    {
-      id: 1,
-      image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1200&q=80",
-      title: "Photo 1",
-      eventName: "Campus Music Festival"
-    },
-    {
-      id: 2,
-      image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&q=80",
-      title: "Photo 2",
-      eventName: "Student Art Exhibition"
-    },
-    {
-      id: 3,
-      image: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1200&q=80",
-      title: "Photo 3",
-      eventName: "Inter-College Sports Meet"
-    },
-    {
-      id: 4,
-      image: "https://images.unsplash.com/photo-1543258103-a62bdc0697bf?w=1200&q=80",
-      title: "Photo 4",
-      eventName: "Tech Symposium 2025"
-    },
-    {
-      id: 5,
-      image: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1200&q=80",
-      title: "Photo 5",
-      eventName: "Cultural Night"
-    },
-    {
-      id: 6,
-      image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&q=80",
-      title: "Photo 6",
-      eventName: "24hr Hackathon"
-    },
-    {
-      id: 7,
-      image: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=1200&q=80",
-      title: "Photo 7",
-      eventName: "Startup Pitch Competition"
-    },
-    {
-      id: 8,
-      image: "https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=1200&q=80",
-      title: "Photo 8",
-      eventName: "Photography Workshop"
-    },
-    {
-      id: 9,
-      image: "https://images.unsplash.com/photo-1504609773096-104ff2c73ba4?w=1200&q=80",
-      title: "Photo 9",
-      eventName: "Dance Battle Championship"
+  // Fetch events on component mount
+  useEffect(() => {
+    fetchGalleryEvents();
+  }, []);
+
+  const fetchGalleryEvents = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Fetch both featured and latest events
+      const [featuredRes, latestRes] = await Promise.all([
+        api.events.getFeatured(),
+        api.events.getLatest()
+      ]);
+
+      const allEvents = [];
+
+      if (featuredRes.success) {
+        allEvents.push(...featuredRes.data);
+      }
+
+      if (latestRes.success) {
+        allEvents.push(...latestRes.data);
+      }
+
+      // Filter events that have banner images and transform to gallery format
+      const gallery = allEvents
+        .filter(event => event.banner_image_url)
+        .map(event => ({
+          id: event.id,
+          image: event.banner_image_url,
+          title: event.title,
+          eventName: event.category?.name || 'Campus Event',
+          slug: event.slug
+        }));
+
+      setGalleryItems(gallery);
+
+    } catch (err) {
+      console.error('Error fetching gallery events:', err);
+      setError(err.message || 'Failed to load gallery');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  // Handle image click to view full size
+  const handleImageClick = (item) => {
+    setSelectedImage(item);
+  };
+
+  // Close full size view
+  const closeFullView = () => {
+    setSelectedImage(null);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
@@ -211,43 +218,116 @@ const EventGalleryPage = ({ user, onLogout, onNavigate }) => {
         </div>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-slate-600 font-medium">Loading gallery...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-red-800 mb-1">Error Loading Gallery</h3>
+              <p className="text-red-600 text-sm">{error}</p>
+              <button 
+                onClick={fetchGalleryEvents}
+                className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Gallery Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {galleryItems.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden group cursor-pointer border border-slate-100"
-            >
-              <div className="relative h-64 overflow-hidden">
-                <img
-                  src={item.image}
-                  alt={item.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                
-                {/* Overlay info on hover */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                  <div className="flex items-center space-x-2 text-white">
-                    <Camera className="w-4 h-4" />
-                    <span className="text-xs font-medium">View Full Size</span>
+      {!loading && !error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          {galleryItems.length === 0 ? (
+            <div className="text-center py-12">
+              <Camera className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500 text-lg">No gallery items available yet.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {galleryItems.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => handleImageClick(item)}
+                  className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden group cursor-pointer border border-slate-100"
+                >
+                  <div className="relative h-64 overflow-hidden">
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      onError={(e) => {
+                        e.target.src = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&q=80';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    
+                    {/* Overlay info on hover */}
+                    <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                      <div className="flex items-center space-x-2 text-white">
+                        <Camera className="w-4 h-4" />
+                        <span className="text-xs font-medium">View Full Size</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-5">
+                    <h3 className="text-lg font-bold text-slate-800 mb-1 line-clamp-2">
+                      {item.title}
+                    </h3>
+                    <p className="text-sm text-slate-600">
+                      {item.eventName}
+                    </p>
                   </div>
                 </div>
-              </div>
-
-              <div className="p-5">
-                <h3 className="text-lg font-bold text-slate-800 mb-1">
-                  {item.title}
-                </h3>
-                <p className="text-sm text-slate-600">
-                  {item.eventName}
-                </p>
-              </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
-      </div>
+      )}
+
+      {/* Full Size Image Modal */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+          onClick={closeFullView}
+        >
+          <button
+            onClick={closeFullView}
+            className="absolute top-4 right-4 text-white hover:text-slate-300 transition-colors"
+          >
+            <X className="w-8 h-8" />
+          </button>
+          
+          <div className="max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={selectedImage.image}
+              alt={selectedImage.title}
+              className="w-full h-auto rounded-xl"
+            />
+            <div className="mt-4 text-center">
+              <h3 className="text-xl font-bold text-white mb-2">
+                {selectedImage.title}
+              </h3>
+              <p className="text-slate-300">
+                {selectedImage.eventName}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="bg-slate-900 text-white py-12 mt-12">

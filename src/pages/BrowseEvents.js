@@ -32,6 +32,7 @@ const BrowseEventsPage = ({ user, onLogout, onNavigate }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     fetchAllEvents();
@@ -90,6 +91,33 @@ const BrowseEventsPage = ({ user, onLogout, onNavigate }) => {
     setFilteredEvents(filtered);
   };
 
+  // Get unique event titles for suggestions (remove duplicates)
+  const getSuggestions = () => {
+    if (!searchQuery.trim()) return [];
+    
+    const query = searchQuery.toLowerCase();
+    
+    // Use Set to remove duplicate titles
+    const uniqueTitles = [...new Set(events.map(e => e.title))];
+    
+    return uniqueTitles
+      .filter(title => title.toLowerCase().includes(query))
+      .slice(0, 5);
+  };
+
+  // Handle search input change
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setShowSuggestions(true);
+  };
+
+  // Handle suggestion click
+  const handleSuggestionClick = (suggestion) => {
+    setSearchQuery(suggestion);
+    setShowSuggestions(false);
+  };
+
   const formatDate = (datetime) => {
     if (!datetime) return 'TBA';
     const date = new Date(datetime);
@@ -120,6 +148,8 @@ const BrowseEventsPage = ({ user, onLogout, onNavigate }) => {
   const handleEventClick = (slug) => {
     onNavigate(`event-details-${slug}`);
   };
+
+  const suggestions = getSuggestions();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
@@ -232,8 +262,30 @@ const BrowseEventsPage = ({ user, onLogout, onNavigate }) => {
                 placeholder="Search events..."
                 className="w-full py-3 pl-12 pr-4 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:bg-white transition-all outline-none"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={handleSearchChange}
+                onFocus={() => setShowSuggestions(true)}
               />
+
+              {showSuggestions && suggestions.length > 0 && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-10" 
+                    onClick={() => setShowSuggestions(false)}
+                  ></div>
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-20 max-h-60 overflow-y-auto">
+                    {suggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors text-slate-700 flex items-center space-x-3"
+                      >
+                        <Search className="w-4 h-4 text-slate-400" />
+                        <span>{suggestion}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Filter Toggle */}
@@ -409,7 +461,7 @@ const BrowseEventsPage = ({ user, onLogout, onNavigate }) => {
                       )}
                     </div>
 
-                    <button className="w-full py-2.5 border-2 border-indigo-600 text-indigo-600 rounded-xl font-semibold hover:bg-indigo-600 hover:text-white transition-all text-sm">
+                    <button className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-lg font-semibold text-sm transition-all">
                       View Details
                     </button>
                   </div>
@@ -468,12 +520,7 @@ const BrowseEventsPage = ({ user, onLogout, onNavigate }) => {
                         <Clock className="w-4 h-4 text-indigo-600 mr-2" />
                         <span>{formatTime(event.start_datetime)}</span>
                       </div>
-                      {event.venue && (
-                        <div className="flex items-center text-slate-600 text-sm col-span-2">
-                          <MapPin className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
-                          <span className="line-clamp-1">{event.venue}</span>
-                        </div>
-                      )}
+                    
                     </div>
                   </div>
                 </div>

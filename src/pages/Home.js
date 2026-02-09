@@ -1,3 +1,4 @@
+// src/pages/HomePage.jsx
 import React, { useState, useEffect } from "react";
 import {
   Sparkles,
@@ -14,7 +15,8 @@ import {
   Settings,
   TrendingUp,
   Flame,
-  AlertCircle
+  AlertCircle,
+  SlidersHorizontal
 } from "lucide-react";
 import api from "../api/axios";
 
@@ -29,11 +31,19 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedMode, setSelectedMode] = useState("all");
 
   // Fetch events on component mount
   useEffect(() => {
     fetchEvents();
   }, []);
+
+  // Apply filters whenever dependencies change
+  useEffect(() => {
+    applyFilters();
+  }, [featuredEvents, upcomingEvents, searchQuery, selectedCategory, selectedMode]);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -47,12 +57,10 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
 
       if (featuredRes.success) {
         setFeaturedEvents(featuredRes.data);
-        setFilteredFeatured(featuredRes.data);
       }
 
       if (latestRes.success) {
         setUpcomingEvents(latestRes.data);
-        setFilteredUpcoming(latestRes.data);
       }
 
     } catch (err) {
@@ -61,6 +69,51 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
     } finally {
       setLoading(false);
     }
+  };
+
+  const applyFilters = () => {
+    let filtered1 = [...featuredEvents];
+    let filtered2 = [...upcomingEvents];
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      
+      filtered1 = filtered1.filter(event =>
+        event.title.toLowerCase().includes(query) ||
+        event.description?.toLowerCase().includes(query) ||
+        event.venue?.toLowerCase().includes(query)
+      );
+
+      filtered2 = filtered2.filter(event =>
+        event.title.toLowerCase().includes(query) ||
+        event.description?.toLowerCase().includes(query) ||
+        event.venue?.toLowerCase().includes(query)
+      );
+    }
+
+    // Category filter
+    if (selectedCategory !== "all") {
+      filtered1 = filtered1.filter(event => 
+        event.category?.name.toLowerCase() === selectedCategory.toLowerCase()
+      );
+      filtered2 = filtered2.filter(event => 
+        event.category?.name.toLowerCase() === selectedCategory.toLowerCase()
+      );
+    }
+
+    // Mode filter
+    if (selectedMode !== "all") {
+      filtered1 = filtered1.filter(event => 
+        event.mode?.toLowerCase() === selectedMode.toLowerCase()
+      );
+      filtered2 = filtered2.filter(event => 
+        event.mode?.toLowerCase() === selectedMode.toLowerCase()
+      );
+    }
+
+    setFilteredFeatured(filtered1);
+    setFilteredUpcoming(filtered2);
   };
 
   // Format date helper
@@ -85,51 +138,28 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
     });
   };
 
-  // Get all event titles for suggestions
-  const getAllEventTitles = () => {
-    const allTitles = [
-      ...featuredEvents.map(e => e.title),
-      ...upcomingEvents.map(e => e.title)
-    ];
-    return allTitles;
-  };
-
-  // Filter suggestions based on search query
+  // Get unique event titles for suggestions (remove duplicates)
   const getSuggestions = () => {
     if (!searchQuery.trim()) return [];
     
     const query = searchQuery.toLowerCase();
-    const titles = getAllEventTitles();
+    const allEvents = [...featuredEvents, ...upcomingEvents];
     
-    return titles.filter(title => 
-      title.toLowerCase().includes(query)
-    ).slice(0, 5);
+    // Use Set to remove duplicate titles
+    const uniqueTitles = [...new Set(allEvents.map(e => e.title))];
+    
+    return uniqueTitles
+      .filter(title => title.toLowerCase().includes(query))
+      .slice(0, 5);
   };
 
-  // Handle search
-  const handleSearch = (query) => {
-    if (!query.trim()) {
-      setFilteredFeatured(featuredEvents);
-      setFilteredUpcoming(upcomingEvents);
-      return;
-    }
-
-    const searchTerm = query.toLowerCase();
-    
-    const filtered1 = featuredEvents.filter(event =>
-      event.title.toLowerCase().includes(searchTerm) ||
-      event.description?.toLowerCase().includes(searchTerm) ||
-      event.venue?.toLowerCase().includes(searchTerm)
-    );
-
-    const filtered2 = upcomingEvents.filter(event =>
-      event.title.toLowerCase().includes(searchTerm) ||
-      event.description?.toLowerCase().includes(searchTerm) ||
-      event.venue?.toLowerCase().includes(searchTerm)
-    );
-
-    setFilteredFeatured(filtered1);
-    setFilteredUpcoming(filtered2);
+  // Get unique categories
+  const getUniqueCategories = () => {
+    const allEvents = [...featuredEvents, ...upcomingEvents];
+    const categories = allEvents
+      .map(event => event.category?.name)
+      .filter(Boolean);
+    return [...new Set(categories)];
   };
 
   // Handle search input change
@@ -143,13 +173,11 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
   const handleSuggestionClick = (suggestion) => {
     setSearchQuery(suggestion);
     setShowSuggestions(false);
-    handleSearch(suggestion);
   };
 
   // Handle search button click
   const handleSearchSubmit = () => {
     setShowSuggestions(false);
-    handleSearch(searchQuery);
   };
 
   // Handle event click
@@ -295,46 +323,93 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* Search Bar and Filters */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 mb-12">
         <div className="bg-white rounded-2xl shadow-lg p-6">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search for events, workshops, festivals..."
-              className="w-full py-3.5 pl-12 pr-32 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:bg-white transition-all outline-none text-slate-800"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              onFocus={() => setShowSuggestions(true)}
-            />
-            <button 
-              onClick={handleSearchSubmit}
-              className="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm">
-              Search
+          <div className="flex flex-col lg:flex-row gap-4 mb-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search for events, workshops, festivals..."
+                className="w-full py-3.5 pl-12 pr-4 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:bg-white transition-all outline-none text-slate-800"
+                value={searchQuery}
+                onChange={handleSearchChange}
+                onFocus={() => setShowSuggestions(true)}
+              />
+
+              {showSuggestions && suggestions.length > 0 && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-10" 
+                    onClick={() => setShowSuggestions(false)}
+                  ></div>
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-20 max-h-60 overflow-y-auto">
+                    {suggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors text-slate-700 flex items-center space-x-3"
+                      >
+                        <Search className="w-4 h-4 text-slate-400" />
+                        <span>{suggestion}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Filter Toggle */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors font-medium flex items-center justify-center space-x-2"
+            >
+              <SlidersHorizontal className="w-5 h-5" />
+              <span>Filters</span>
             </button>
 
-            {showSuggestions && suggestions.length > 0 && (
-              <>
-                <div 
-                  className="fixed inset-0 z-10" 
-                  onClick={() => setShowSuggestions(false)}
-                ></div>
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-20 max-h-60 overflow-y-auto">
-                  {suggestions.map((suggestion, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleSuggestionClick(suggestion)}
-                      className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors text-slate-700 flex items-center space-x-3"
-                    >
-                      <Search className="w-4 h-4 text-slate-400" />
-                      <span>{suggestion}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+            <button 
+              onClick={handleSearchSubmit}
+              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all font-medium">
+              Search
+            </button>
           </div>
+
+          {/* Filter Options */}
+          {showFilters && (
+            <div className="pt-4 border-t border-slate-200">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                  >
+                    <option value="all">All Categories</option>
+                    {getUniqueCategories().map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Mode</label>
+                  <select
+                    value={selectedMode}
+                    onChange={(e) => setSelectedMode(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                  >
+                    <option value="all">All Modes</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                    <option value="hybrid">Hybrid</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -389,14 +464,18 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
                   className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden group cursor-pointer border border-slate-100"
                 >
                   <div className="relative h-48 overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100">
-                    {event.banner_image ? (
+                    {event.banner_image_url ? (
                       <img
-                        src={event.banner_image}
+                        src={event.banner_image_url}
                         alt={event.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.parentElement.querySelector('.placeholder')?.classList.remove('hidden');
+                        }}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-full h-full flex items-center justify-center placeholder">
                         <Calendar className="w-16 h-16 text-indigo-300" />
                       </div>
                     )}
@@ -425,12 +504,7 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
                         <Clock className="w-4 h-4 text-indigo-600 ml-4 mr-2 flex-shrink-0" />
                         <span>{formatTime(event.start_datetime)}</span>
                       </div>
-                      {event.venue && (
-                        <div className="flex items-center text-slate-600 text-sm">
-                          <MapPin className="w-4 h-4 text-indigo-600 mr-2 flex-shrink-0" />
-                          <span className="line-clamp-1">{event.venue}</span>
-                        </div>
-                      )}
+                   
                     </div>
 
                     <button className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-lg font-semibold text-sm transition-all">
@@ -504,7 +578,7 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
                         )}
                       </div>
 
-                      <button className="w-full py-2.5 border-2 border-indigo-600 text-indigo-600 rounded-xl font-semibold hover:bg-indigo-600 hover:text-white transition-all text-sm">
+                      <button className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-lg font-semibold text-sm transition-all">
                         Register Now
                       </button>
                     </div>
