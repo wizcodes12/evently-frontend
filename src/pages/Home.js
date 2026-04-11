@@ -218,9 +218,11 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
                 className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors">
                 Event Gallery
               </button>
-              <button className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors">
-                My Registrations
-              </button>
+<button 
+  onClick={() => onNavigate("my-registrations")}
+  className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors">
+  My Registrations
+</button>
               
               <button className="relative p-2 text-slate-700 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors ml-2">
                 <Bell className="w-5 h-5" />
@@ -292,9 +294,9 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
               <button onClick={() => onNavigate("gallery")} className="block w-full text-left px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
                 Event Gallery
               </button>
-              <button className="block w-full text-left px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-                My Registrations
-              </button>
+<button onClick={() => { onNavigate("my-registrations"); setIsMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
+  My Registrations
+</button>
               <button className="block w-full text-left px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
                 Profile
               </button>
@@ -541,9 +543,9 @@ const HomePage = ({ user = { name: "Patel", email: "patel@example.com" }, onLogo
                     className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden cursor-pointer border border-slate-100"
                   >
                     <div className="relative h-40 overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100">
-                      {event.banner_image ? (
+                      {event.banner_image_url ? (
                         <img
-                          src={event.banner_image}
+                          src={event.banner_image_url}
                           alt={event.title}
                           className="w-full h-full object-cover"
                         />

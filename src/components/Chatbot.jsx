@@ -106,8 +106,7 @@ const EventCard = ({ event, onRegister }) => {
         </span>
         <span className="cb-event-price">{event.price}</span>
       </div>
-      <h4 className="cb-event-name">{event.name}</h4>
-      <p className="cb-event-desc">{event.description}</p>
+<h4 className="cb-event-name">{event.name || event.title}</h4>      <p className="cb-event-desc">{event.description}</p>
       <div className="cb-event-meta">
         <span><Icons.Calendar /> {event.date}</span>
         <span><Icons.Location /> {event.location.split(",")[0]}</span>

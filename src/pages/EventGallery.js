@@ -31,37 +31,33 @@ const EventGalleryPage = ({ user, onLogout, onNavigate }) => {
     setLoading(true);
     setError(null);
 
-    try {
-      // Fetch both featured and latest events
-      const [featuredRes, latestRes] = await Promise.all([
-        api.events.getFeatured(),
-        api.events.getLatest()
-      ]);
+try {
+  const [featuredRes, latestRes] = await Promise.all([
+    api.events.getFeatured(),
+    api.events.getLatest()
+  ]);
 
-      const allEvents = [];
+  const allEvents = [];
+  if (featuredRes.success) allEvents.push(...featuredRes.data);
+  if (latestRes.success) allEvents.push(...latestRes.data);
 
-      if (featuredRes.success) {
-        allEvents.push(...featuredRes.data);
-      }
+  // Deduplicate by event id
+  const uniqueEvents = allEvents.filter(
+    (event, index, self) => index === self.findIndex(e => e.id === event.id)
+  );
 
-      if (latestRes.success) {
-        allEvents.push(...latestRes.data);
-      }
+  const gallery = uniqueEvents
+    .filter(event => event.banner_image_url)
+    .map(event => ({
+      id: event.id,
+      image: event.banner_image_url,
+      title: event.title,
+      eventName: event.category?.name || 'Campus Event',
+      slug: event.slug
+    }));
 
-      // Filter events that have banner images and transform to gallery format
-      const gallery = allEvents
-        .filter(event => event.banner_image_url)
-        .map(event => ({
-          id: event.id,
-          image: event.banner_image_url,
-          title: event.title,
-          eventName: event.category?.name || 'Campus Event',
-          slug: event.slug
-        }));
-
-      setGalleryItems(gallery);
-
-    } catch (err) {
+  setGalleryItems(gallery);
+} catch (err) {
       console.error('Error fetching gallery events:', err);
       setError(err.message || 'Failed to load gallery');
     } finally {
